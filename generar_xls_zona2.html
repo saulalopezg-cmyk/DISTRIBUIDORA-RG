@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Generar XLS – RG ZONA 2</title>
+  <link rel="stylesheet" href="css/material.min.css" />
+  <link rel="stylesheet" href="css/material-design-iconic-font.min.css" />
+  <link rel="stylesheet" href="css/main.css" />
+  <script src="js/material.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+  <!-- Menú lateral y encabezado si deseas integrarlos -->
+
+ <div class="full-width navBar">
+    <div class="full-width navBar-options">
+      <i class="zmdi zmdi-more-vert btn-menu" id="btn-menu"></i>
+      <nav class="navBar-options-list">
+        <ul class="list-unstyle">
+          <li class="btn-exit" onclick="logout()">
+            <i class="zmdi zmdi-power"></i>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+<section class="full-width navLateral">
+    <div class="full-width navLateral-bg btn-menu"></div>
+    <div class="full-width navLateral-body">
+      <div class="full-width navLateral-body-logo text-center tittles">
+        <i class="zmdi zmdi-close btn-menu"></i> DISTRIBUIDORA RG - ZONA 2
+      </div>
+      <figure class="full-width" style="height: 77px;">
+        <div class="navLateral-body-cl">
+<img src="assets/img/logo_rg.png" ... />  </div>
+        <figcaption class="navLateral-body-cr hide-on-tablet">
+          <span>
+            <br />
+            <small></small>
+          </span>
+        </figcaption>
+      </figure>
+      <div class="full-width tittles navLateral-body-tittle-menu">
+        <i class="zmdi zmdi-desktop-mac"></i><span class="hide-on-tablet"> MENÚ</span>
+      </div>
+      <nav class="full-width">
+        <ul class="full-width list-unstyle menu-principal">
+         <li><a href="inventario_zona2.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-store"></i></div><div class="navLateral-body-cr hide-on-tablet">Inventario</div></a></li>
+            <li><a href="cliente_zona2.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-accounts"></i></div><div class="navLateral-body-cr hide-on-tablet">Clientes</div></a></li>
+            <li><a href="compras_zona2.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-shopping-basket"></i></div><div class="navLateral-body-cr hide-on-tablet">Compras</div></a></li>
+            <li><a href="proveedores_zona2.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-truck"></i></div><div class="navLateral-body-cr hide-on-tablet">Proveedores</div></a></li>
+            <li><a href="ventas_zona2.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-shopping-cart"></i></div><div class="navLateral-body-cr hide-on-tablet">Ventas</div></a></li>
+            <li><a href="cuentas-cobrar_zona2.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-balance-wallet"></i></div><div class="navLateral-body-cr hide-on-tablet">Cuentas por cobrar</div></a></li>
+           <li><a href="generar_xls_zona2.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-file"></i></div><div class="navLateral-body-cr hide-on-tablet">Generar XLS</div></a></li>
+</ul>
+      </nav>
+    </div>
+  </section>
+
+
+  <section class="full-width pageContent" style="text-align: center; padding: 60px 20px;">
+    <h3 class="tittles">Generar archivo XLS consolidado</h3>
+    <p>Haz clic en el botón para descargar todos los datos en un solo Excel.</p>
+    <button id="btn-generar-xls" class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored">
+      <i class="zmdi zmdi-file-text"></i> Generar XLS
+    </button>
+  </section>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+    import * as XLSX from "https://cdn.sheetjs.com/xlsx-0.20.0/package/xlsx.mjs";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB3V7b4lnqv8gTZa-HnczZhghSlYr1jHjE",
+      authDomain: "distribuidorarg-9951a.firebaseapp.com",
+      databaseURL: "https://distribuidorarg-9951a-default-rtdb.firebaseio.com",
+      projectId: "distribuidorarg-9951a",
+      storageBucket: "distribuidorarg-9951a.appspot.com",
+      messagingSenderId: "785071843932",
+      appId: "1:785071843932:web:59832bb2161f30ed665499"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    document.getElementById("btn-generar-xls").addEventListener("click", () => {
+      Promise.all([
+        get(ref(db, "productos_zona2")),
+        get(ref(db, "clientes_zona2")),
+        get(ref(db, "compras_zona2")),
+        get(ref(db, "proveedores_zona2"))
+      ]).then(([snapProductos, snapClientes, snapCompras, snapProveedores]) => {
+        const productos = snapProductos.val() || {};
+        const clientes = snapClientes.val() || {};
+        const compras = snapCompras.val() || {};
+         const proveedores = snapCompras.val() || {};
+
+        const datosProductos = [["Código", "Nombre", "Cantidad", "Precio", "Proveedor"]];
+        Object.values(productos).forEach(p => {
+          datosProductos.push([p.codigo || "-", p.nombre || "-", p.cantidad || 0, p.precio || 0, p.proveedor || "-"]);
+        });
+
+        const datosClientes = [["Nombre", "Correo", "Tipo"]];
+        Object.values(clientes).forEach(c => {
+          datosClientes.push([c.nombre || "-", c.correo || "-", c.tipo || "-"]);
+        });
+
+        const datosCompras = [["Factura", "Proveedor", "Producto", "Fecha", "Cantidad", "Precio", "Total"]];
+        Object.values(compras).forEach(c => {
+          datosCompras.push([
+            c.factura || "-", c.proveedor || "-", c.codigoProducto || "-", c.fecha || "-",
+            c.cantidad || 0, c.precioUnitario || 0, c.total || 0
+          ]);
+        });
+        const datosProveedores = [["Nombre, Nit, Contacto, Telefono, Direccion"]];
+        Object.values(proveedores).forEach(c => {
+          datosProveedores.push([
+            c.nombre || "-", c.nit || "-", c.contacto || "-", c.telefono || "-",
+            c.direccion || "-"
+          ]);
+        });
+
+        const libro = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(datosProductos), "Inventario");
+        XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(datosClientes), "Clientes");
+        XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(datosCompras), "Compras");
+        XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(datosProveedores), "Proveedores");
+
+        XLSX.writeFile(libro, "reporte_rg_zona2.xlsx");
+      }).catch(() => {
+        Swal.fire("Error", "No se pudo generar el archivo", "error");
+      });
+    });
+
+    import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js"; // ✅ Asegúrate de incluir signOut
+
+const auth = getAuth(app); // ✅ Si ya lo tienes en otro lugar, no lo repitas
+
+function logout() {
+  signOut(auth)
+    .then(() => {
+      window.location.href = "opciones.html"; // Redirige al login o página principal
+    })
+    .catch((error) => {
+      console.error("Error al cerrar sesión:", error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Oops...',
+        text: 'No se pudo cerrar la sesión. Intenta de nuevo.'
+      });
+    });
+}
+
+// ✅ Exponer la función al ámbito global
+window.logout = logout;
+
+  </script>
+</body>
+</html>
