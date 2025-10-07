@@ -10,9 +10,8 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-  <!-- Menú lateral y encabezado si deseas integrarlos -->
-
- <div class="full-width navBar">
+  <!-- Barra superior -->
+  <div class="full-width navBar">
     <div class="full-width navBar-options">
       <i class="zmdi zmdi-more-vert btn-menu" id="btn-menu"></i>
       <nav class="navBar-options-list">
@@ -24,7 +23,9 @@
       </nav>
     </div>
   </div>
-<section class="full-width navLateral">
+
+  <!-- Lateral -->
+  <section class="full-width navLateral">
     <div class="full-width navLateral-bg btn-menu"></div>
     <div class="full-width navLateral-body">
       <div class="full-width navLateral-body-logo text-center tittles">
@@ -32,12 +33,10 @@
       </div>
       <figure class="full-width" style="height: 77px;">
         <div class="navLateral-body-cl">
-<img src="assets/img/logo_rg.png" ... />  </div>
+          <img src="assets/img/logo_rg.png" />
+        </div>
         <figcaption class="navLateral-body-cr hide-on-tablet">
-          <span>
-            <br />
-            <small></small>
-          </span>
+          <span><br /><small></small></span>
         </figcaption>
       </figure>
       <div class="full-width tittles navLateral-body-tittle-menu">
@@ -45,19 +44,19 @@
       </div>
       <nav class="full-width">
         <ul class="full-width list-unstyle menu-principal">
-         <li><a href="inventario_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-store"></i></div><div class="navLateral-body-cr hide-on-tablet">Inventario</div></a></li>
-            <li><a href="cliente_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-accounts"></i></div><div class="navLateral-body-cr hide-on-tablet">Clientes</div></a></li>
-            <li><a href="compras_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-shopping-basket"></i></div><div class="navLateral-body-cr hide-on-tablet">Compras</div></a></li>
-            <li><a href="proveedores_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-truck"></i></div><div class="navLateral-body-cr hide-on-tablet">Proveedores</div></a></li>
-            <li><a href="ventas_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-shopping-cart"></i></div><div class="navLateral-body-cr hide-on-tablet">Ventas</div></a></li>
-            <li><a href="cuentas-cobrar_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-balance-wallet"></i></div><div class="navLateral-body-cr hide-on-tablet">Cuentas por cobrar</div></a></li>
-           <li><a href="generar_xls_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-file"></i></div><div class="navLateral-body-cr hide-on-tablet">Generar XLS</div></a></li>
-</ul>
+          <li><a href="inventario_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-store"></i></div><div class="navLateral-body-cr hide-on-tablet">Inventario</div></a></li>
+          <li><a href="cliente_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-accounts"></i></div><div class="navLateral-body-cr hide-on-tablet">Clientes</div></a></li>
+          <li><a href="compras_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-shopping-basket"></i></div><div class="navLateral-body-cr hide-on-tablet">Compras</div></a></li>
+          <li><a href="proveedores_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-truck"></i></div><div class="navLateral-body-cr hide-on-tablet">Proveedores</div></a></li>
+          <li><a href="ventas_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-shopping-cart"></i></div><div class="navLateral-body-cr hide-on-tablet">Ventas</div></a></li>
+          <li><a href="cuentas-cobrar_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-balance-wallet"></i></div><div class="navLateral-body-cr hide-on-tablet">Cuentas por cobrar</div></a></li>
+          <li><a href="generar_xls_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-file"></i></div><div class="navLateral-body-cr hide-on-tablet">Generar XLS</div></a></li>
+        </ul>
       </nav>
     </div>
   </section>
 
-
+  <!-- Contenido -->
   <section class="full-width pageContent" style="text-align: center; padding: 60px 20px;">
     <h3 class="tittles">Generar archivo XLS consolidado</h3>
     <p>Haz clic en el botón para descargar todos los datos en un solo Excel.</p>
@@ -70,6 +69,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
     import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
     import * as XLSX from "https://cdn.sheetjs.com/xlsx-0.20.0/package/xlsx.mjs";
+    import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB3V7b4lnqv8gTZa-HnczZhghSlYr1jHjE",
@@ -83,6 +83,12 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    function toNum(n) {
+      const v = Number(n);
+      return Number.isFinite(v) ? v : 0;
+    }
 
     document.getElementById("btn-generar-xls").addEventListener("click", () => {
       Promise.all([
@@ -94,67 +100,103 @@
         const productos = snapProductos.val() || {};
         const clientes = snapClientes.val() || {};
         const compras = snapCompras.val() || {};
-         const proveedores = snapCompras.val() || {};
+        const proveedores = snapProveedores.val() || {}; // ✅ corregido
 
-        const datosProductos = [["Código", "Nombre", "Cantidad", "Precio", "Proveedor"]];
+        // ----- Hoja: Inventario (con Presentación) -----
+        const datosProductos = [["Código", "Nombre", "Cantidad", "Presentación", "Precio", "Proveedor"]];
         Object.values(productos).forEach(p => {
-          datosProductos.push([p.codigo || "-", p.nombre || "-", p.cantidad || 0, p.precio || 0, p.proveedor || "-"]);
+          datosProductos.push([
+            p.codigo || "-",
+            p.nombre || "-",
+            toNum(p.cantidad),
+            p.presentacion || "-",          // ✅ nueva columna
+            toNum(p.precio),
+            p.proveedor || "-"
+          ]);
         });
 
+        // ----- Hoja: Clientes -----
         const datosClientes = [["Nombre", "Correo", "Tipo"]];
         Object.values(clientes).forEach(c => {
           datosClientes.push([c.nombre || "-", c.correo || "-", c.tipo || "-"]);
         });
 
-        const datosCompras = [["Factura", "Proveedor", "Producto", "Fecha", "Cantidad", "Precio", "Total"]];
+        // ----- Hoja: Compras -----
+        const datosCompras = [["Factura", "Proveedor", "Producto/Código", "Fecha", "Cantidad", "Precio Unitario", "Total"]];
         Object.values(compras).forEach(c => {
           datosCompras.push([
-            c.factura || "-", c.proveedor || "-", c.codigoProducto || "-", c.fecha || "-",
-            c.cantidad || 0, c.precioUnitario || 0, c.total || 0
-          ]);
-        });
-        const datosProveedores = [["Nombre, Nit, Contacto, Telefono, Direccion"]];
-        Object.values(proveedores).forEach(c => {
-          datosProveedores.push([
-            c.nombre || "-", c.nit || "-", c.contacto || "-", c.telefono || "-",
-            c.direccion || "-"
+            c.factura || "-",
+            c.proveedor || "-",
+            c.codigoProducto || "-",
+            c.fecha || "-",
+            toNum(c.cantidad),
+            toNum(c.precioUnitario),
+            toNum(c.total)
           ]);
         });
 
+        // ----- Hoja: Proveedores (columnas separadas) -----
+        const datosProveedores = [["Nombre", "NIT", "Contacto", "Teléfono", "Dirección"]];
+        Object.values(proveedores).forEach(pv => {
+          datosProveedores.push([
+            pv.nombre || "-",
+            pv.nit || "-",
+            pv.contacto || "-",
+            pv.telefono || "-",
+            pv.direccion || "-"
+          ]);
+        });
+
+        // Crear libro y hojas
         const libro = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(datosProductos), "Inventario");
-        XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(datosClientes), "Clientes");
-        XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(datosCompras), "Compras");
-        XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(datosProveedores), "Proveedores");
+
+        const wsProd = XLSX.utils.aoa_to_sheet(datosProductos);
+        const wsCli  = XLSX.utils.aoa_to_sheet(datosClientes);
+        const wsComp = XLSX.utils.aoa_to_sheet(datosCompras);
+        const wsProv = XLSX.utils.aoa_to_sheet(datosProveedores);
+
+        // (Opcional) Anchos de columnas para que se vea mejor
+        wsProd['!cols'] = [
+          { wch: 12 }, // Código
+          { wch: 32 }, // Nombre
+          { wch: 12 }, // Cantidad
+          { wch: 14 }, // Presentación
+          { wch: 12 }, // Precio
+          { wch: 24 }  // Proveedor
+        ];
+        wsCli['!cols'] = [{ wch: 28 }, { wch: 30 }, { wch: 14 }];
+        wsComp['!cols'] = [{ wch: 14 }, { wch: 24 }, { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 12 }];
+        wsProv['!cols'] = [{ wch: 24 }, { wch: 16 }, { wch: 20 }, { wch: 14 }, { wch: 28 }];
+
+        XLSX.utils.book_append_sheet(libro, wsProd, "Inventario");
+        XLSX.utils.book_append_sheet(libro, wsCli, "Clientes");
+        XLSX.utils.book_append_sheet(libro, wsComp, "Compras");
+        XLSX.utils.book_append_sheet(libro, wsProv, "Proveedores");
 
         XLSX.writeFile(libro, "reporte_rg_naranjo.xlsx");
-      }).catch(() => {
+      }).catch((err) => {
+        console.error(err);
         Swal.fire("Error", "No se pudo generar el archivo", "error");
       });
     });
 
-    import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js"; // ✅ Asegúrate de incluir signOut
-
-const auth = getAuth(app); // ✅ Si ya lo tienes en otro lugar, no lo repitas
-
-function logout() {
-  signOut(auth)
-    .then(() => {
-      window.location.href = "opciones.html"; // Redirige al login o página principal
-    })
-    .catch((error) => {
-      console.error("Error al cerrar sesión:", error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Oops...',
-        text: 'No se pudo cerrar la sesión. Intenta de nuevo.'
-      });
-    });
-}
-
-// ✅ Exponer la función al ámbito global
-window.logout = logout;
-
+    // Logout
+    function logout() {
+      signOut(auth)
+        .then(() => {
+          window.location.href = "opciones.html";
+        })
+        .catch((error) => {
+          console.error("Error al cerrar sesión:", error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Oops...',
+            text: 'No se pudo cerrar la sesión. Intenta de nuevo.'
+          });
+        });
+    }
+    // Exponer global
+    window.logout = logout;
   </script>
 </body>
 </html>

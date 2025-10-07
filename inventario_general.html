@@ -4,23 +4,22 @@
   <meta charset="UTF-8">
   <title>Inventario Consolidado</title>
 
-  <!-- 🔧 Firebase & SheetJS -->
+  <!-- Firebase compat & SheetJS -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 
-  <!-- 🎨 Estilos tipo inven -->
+  <!-- Estilos / UI -->
   <link rel="stylesheet" href="css/material.min.css" />
   <link rel="stylesheet" href="css/material-design-iconic-font.min.css" />
   <link rel="stylesheet" href="css/main.css" />
   <script src="js/material.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 </head>
 <body>
 
-  <!-- 🔷 Barra superior -->
+  <!-- Barra superior -->
   <div class="full-width navBar">
     <div class="full-width navBar-options">
       <i class="zmdi zmdi-more-vert btn-menu" id="btn-menu"></i>
@@ -34,18 +33,17 @@
     </div>
   </div>
 
-  <!-- 📁 Menú lateral -->
+  <!-- Menú lateral (opcional) -->
   <section class="full-width navLateral">
     <div class="full-width navLateral-bg btn-menu"></div>
     <div class="full-width navLateral-body">
       <div class="full-width navLateral-body-logo text-center tittles">
         <i class="zmdi zmdi-close btn-menu"></i> INVENTARIO GENERAL
       </div>
-      <!-- Puedes agregar aquí el menú lateral si lo necesitas -->
     </div>
   </section>
 
-  <!-- 📋 Contenido principal -->
+  <!-- Contenido principal -->
   <section class="full-width pageContent" style="text-align: center; padding: 60px 20px;">
     <h3 class="tittles">Inventario Consolidado</h3>
     <p>Haz clic en el botón para descargar el inventario general.</p>
@@ -54,9 +52,8 @@
     </button>
   </section>
 
-  <!-- 🧠 Lógica JS -->
   <script>
-    
+    // Config Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyB3V7b4lnqv8gTZa-HnczZhghSlYr1jHjE",
       authDomain: "distribuidorarg-9951a.firebaseapp.com",
@@ -70,43 +67,50 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    // 🔹 Lee inventarios por bodega
     async function obtenerInventarios(db) {
       const bodegas = ["pimentel", "naranjo", "nixkab", "zona2", "zona7"];
       const datos = [];
 
       for (const nombre of bodegas) {
-        const snapshot = await db.ref(`productos_${nombre}`).once("value");
-        const inventario = snapshot.val() || {};
-        const productos = Object.entries(inventario).map(([id, data]) => ({
-          producto: data.nombre,
-          cantidad: parseFloat(data.cantidad) || 0
-        }));
+        const snap = await db.ref(`productos_${nombre}`).once("value");
+        const inventario = snap.val() || {};
+        const productos = Object.entries(inventario).map(([id, data]) => {
+          const nombreProd = (data?.nombre || "").toString().trim() || "(Sin nombre)";
+          const cantidadNum = Number(String(data?.cantidad ?? 0).toString().replace(",", ".")) || 0;
+          return { producto: nombreProd, cantidad: cantidadNum };
+        });
         datos.push({ nombre, inventario: productos });
       }
 
       return datos;
     }
 
+    // 🔹 Consolida y suma por producto
     function consolidarInventario(bodegas) {
       const mapa = new Map();
 
       bodegas.forEach(({ nombre, inventario }) => {
+        const keyBodega = nombre.toUpperCase(); // PIMENTEL / NARANJO / NIXKAB / ZONA2 / ZONA7
         inventario.forEach(({ producto, cantidad }) => {
-          if (!mapa.has(producto)) {
-            mapa.set(producto, { producto, total: 0 });
+          const key = (producto || "").trim().toLowerCase() || "(sin nombre)";
+          if (!mapa.has(key)) {
+            mapa.set(key, { producto: producto || "(Sin nombre)", PIMENTEL: 0, NARANJO: 0, NIXKAB: 0, ZONA2: 0, ZONA7: 0, total: 0 });
           }
-          const registro = mapa.get(producto);
-          registro[nombre.toUpperCase()] = cantidad;
+          const registro = mapa.get(key);
+          registro[keyBodega] = (registro[keyBodega] || 0) + cantidad;
           registro.total += cantidad;
         });
       });
 
-      return Array.from(mapa.values());
+      // Array ordenado por nombre de producto
+      return Array.from(mapa.values()).sort((a, b) => a.producto.localeCompare(b.producto, "es", { sensitivity: "base" }));
     }
 
+    // 🔹 Exporta a Excel con fila de totales por bodega
     function exportarInventarioConsolidado(data) {
       const fecha = new Date().toLocaleDateString("es-GT");
-      const encabezado = [`INVENTARIO - FECHA ${fecha}`];
+      const titulo = [`INVENTARIO CONSOLIDADO - ${fecha}`];
       const columnas = ["PRODUCTO", "PIMENTEL", "NARANJO", "NIXKAB", "ZONA2", "ZONA7", "TOTAL"];
 
       const filas = data.map(p => [
@@ -116,64 +120,70 @@
         p.NIXKAB || 0,
         p.ZONA2 || 0,
         p.ZONA7 || 0,
-        p.total
+        p.total || 0
       ]);
 
-      const hoja = XLSX.utils.aoa_to_sheet([encabezado, [], columnas, ...filas]);
+      // Totales por bodega
+      const totPimentel = data.reduce((a, b) => a + (b.PIMENTEL || 0), 0);
+      const totNaranjo  = data.reduce((a, b) => a + (b.NARANJO  || 0), 0);
+      const totNixkab   = data.reduce((a, b) => a + (b.NIXKAB   || 0), 0);
+      const totZ2       = data.reduce((a, b) => a + (b.ZONA2    || 0), 0);
+      const totZ7       = data.reduce((a, b) => a + (b.ZONA7    || 0), 0);
+      const totGeneral  = data.reduce((a, b) => a + (b.total    || 0), 0);
+
+      const filaTotales = ["TOTALES", totPimentel, totNaranjo, totNixkab, totZ2, totZ7, totGeneral];
+
+      const hoja = XLSX.utils.aoa_to_sheet([titulo, [], columnas, ...filas, [], filaTotales]);
+
+      // Ancho de columnas
+      hoja["!cols"] = [
+        { wch: 40 }, // PRODUCTO
+        { wch: 12 }, // PIMENTEL
+        { wch: 12 }, // NARANJO
+        { wch: 12 }, // NIXKAB
+        { wch: 12 }, // ZONA2
+        { wch: 12 }, // ZONA7
+        { wch: 12 }, // TOTAL
+      ];
+
       const libro = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(libro, hoja, "Inventario Consolidado");
       XLSX.writeFile(libro, "inventario_general.xlsx");
     }
 
+    // 🔘 Botón generar
     document.getElementById("btn-generar-xls").addEventListener("click", async () => {
+      Swal.fire({ title: "Generando archivo...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
       try {
         const bodegas = await obtenerInventarios(db);
+
+        const noHayDatos = bodegas.every(b => (b.inventario || []).length === 0);
+        if (noHayDatos) {
+          Swal.close();
+          return Swal.fire("Sin datos", "No hay información para generar el archivo", "warning");
+        }
+
         const consolidado = consolidarInventario(bodegas);
         exportarInventarioConsolidado(consolidado);
+        Swal.close();
       } catch (error) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'No se pudo generar el archivo: ' + error.message
-        });
+        console.error(error);
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo generar el archivo: ' + error.message });
       }
     });
 
+    // 🔐 Logout (único)
     function logout() {
-      firebase.auth().signOut().then(() => {
-        window.location.href = "opciones.html";
-      }).catch((error) => {
-        Swal.fire({
-          icon: 'error',
-          title: 'Oops...',
-          text: 'No se pudo cerrar la sesión. Intenta de nuevo.'
+      firebase.auth().signOut()
+        .then(() => {
+          Swal.fire({ icon: 'success', title: 'Sesión cerrada', text: 'Has salido correctamente.' })
+            .then(() => { window.location.href = "opciones.html"; });
+        })
+        .catch((error) => {
+          Swal.fire({ icon: 'error', title: 'Error al cerrar sesión', text: error.message });
         });
-      });
     }
-
-function logout() {
-  const auth = firebase.auth();
-
-  auth.signOut()
-    .then(() => {
-      Swal.fire({
-        icon: 'success',
-        title: 'Sesión cerrada',
-        text: 'Has salido correctamente.',
-        confirmButtonText: 'OK'
-      }).then(() => {
-        window.location.href = "opciones.html"; // Redirige a tu página de inicio
-      });
-    })
-    .catch((error) => {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error al cerrar sesión',
-        text: error.message
-      });
-    });
-}
-
+    window.logout = logout;
   </script>
 </body>
 </html>

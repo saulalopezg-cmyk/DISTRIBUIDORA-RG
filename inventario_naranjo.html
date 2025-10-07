@@ -1,42 +1,34 @@
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Inventario RG - NARANJO</title>
-    <link rel="stylesheet" href="css/normalize.css" />
-    <link rel="stylesheet" href="css/sweetalert2.css" />
-    <link rel="stylesheet" href="css/material.min.css" />
-    <link rel="stylesheet" href="css/material-design-iconic-font.min.css" />
-    <link rel="stylesheet" href="css/jquery.mCustomScrollbar.css" />
-    <link rel="stylesheet" href="css/main.css" />
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
-    <script>window.jQuery || document.write('<script src="js/jquery-1.11.2.min.js"><\/script>')</script>
-    <script src="js/material.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="js/jquery.mCustomScrollbar.concat.min.js"></script>
-    <script src="js/main.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script type="module">
-        let modoEdicion = false;
-        let idProductoEditado = null;
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Inventario RG - NARANJO</title>
+<link rel="stylesheet" href="css/normalize.css" />
+<link rel="stylesheet" href="css/sweetalert2.css" />
+<link rel="stylesheet" href="css/material.min.css" />
+<link rel="stylesheet" href="css/material-design-iconic-font.min.css" />
+<link rel="stylesheet" href="css/jquery.mCustomScrollbar.css" />
+<link rel="stylesheet" href="css/main.css" />
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+<script>window.jQuery || document.write('<script src="js/jquery-1.11.2.min.js"><\/script>')</script>
+<script src="js/material.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="js/jquery.mCustomScrollbar.concat.min.js"></script>
+<script src="js/main.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
-        import {
-        getAuth,
-        onAuthStateChanged,
-        signOut
-        } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
-        import {
-        getDatabase,
-        ref,
-        set,
-        get,
-        onValue
-        } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
-        const firebaseConfig = {
+<script type="module">
+  let modoEdicion = false;
+  let idProductoEditado = null;
+
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+  import { getDatabase, ref, set, get, onValue, push } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+
+  const firebaseConfig = {
     apiKey: "AIzaSyB3V7b4lnqv8gTZa-HnczZhghSlYr1jHjE",
     authDomain: "distribuidorarg-9951a.firebaseapp.com",
     databaseURL: "https://distribuidorarg-9951a-default-rtdb.firebaseio.com",
@@ -44,98 +36,98 @@
     storageBucket: "distribuidorarg-9951a.firebasestorage.app",
     messagingSenderId: "785071843932",
     appId: "1:785071843932:web:59832bb2161f30ed665499"
-    };
-        import { push } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+  };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const auth = getAuth(app); 
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const auth = getAuth(app); 
 
-    const filtroProducto = document.getElementById("filtroProducto");
-        function registrarAccion(accion, modulo, detalles = {}) {
+  const filtroProducto = document.getElementById("filtroProducto");
+
+  function registrarAccion(accion, modulo, detalles = {}) {
     const user = auth.currentUser;
     if (!user) return;
     const registro = {
-        fecha: new Date().toISOString(),
-        uid: user.uid,
-        correo: user.email,
-        accion,
-        modulo,
-        detalles
+      fecha: new Date().toISOString(),
+      uid: user.uid,
+      correo: user.email,
+      accion,
+      modulo,
+      detalles
     };
     push(ref(db, "registros"), registro);
-    }
-    
-        document.getElementById("btn-addProduct").addEventListener("click", async (e) => {
+  }
+  
+  document.getElementById("btn-addProduct").addEventListener("click", async (e) => {
     e.preventDefault();
     const codigo = document.getElementById("productCode").value.trim();
     const nombre = document.getElementById("productName").value.trim();
-   const cantidad = parseFloat(document.getElementById("productQty").value.trim());
-    const precio = parseFloat(document.getElementById("productPrice").value.trim());
+    const cantidad = parseFloat((document.getElementById("productQty").value || "").replace(",", "."));
+    const presentacion = document.getElementById("productPresentation").value; // ✅ nuevo
+    const precio = parseFloat((document.getElementById("productPrice").value || "").replace(",", "."));
     const proveedor = document.getElementById("productSupplier").value.trim();
 
-
-    if (!codigo || !nombre || isNaN(cantidad) || isNaN(precio)) {
-        Swal.fire("Campos requeridos", "Código, nombre, cantidad y precio son obligatorios", "warning");
-        return;
+    if (!codigo || !nombre || isNaN(cantidad) || isNaN(precio) || !presentacion) {
+      Swal.fire("Campos requeridos", "Código, nombre, cantidad, presentación y precio son obligatorios", "warning");
+      return;
     }
-
-
 
     const idFinal = modoEdicion ? idProductoEditado : codigo;
 
-const producto = {
-  codigo,
-  nombre,
-  cantidad,
-  precio,
-  proveedor
-};
+    const producto = {
+      codigo,
+      nombre,
+      cantidad,
+      presentacion, // ✅ guardamos
+      precio,
+      proveedor
+    };
 
-await set(ref(db, "productos_naranjo/" + idFinal), producto);
+    await set(ref(db, "productos_naranjo/" + idFinal), producto);
     registrarAccion(modoEdicion ? "editó un producto" : "registró un producto", "inventario", producto);
 
     Swal.fire("Éxito", modoEdicion ? "Producto actualizado" : "Producto guardado", "success");
     document.getElementById("form-product").reset();
     modoEdicion = false;
     idProductoEditado = null;
-    });
+  });
 
-    
-        // Mostrar productos
-        const lista = document.getElementById("product-list");
-        let productosData = {};
+  // Mostrar productos
+  const lista = document.getElementById("product-list");
+  let productosData = {};
 
-    onValue(ref(db, "productos_naranjo"), (snapshot) => {
+  onValue(ref(db, "productos_naranjo"), (snapshot) => {
     productosData = snapshot.val() || {};
     renderProductos();
-    });
+  });
 
-    filtroProducto.addEventListener("input", renderProductos);
+  filtroProducto.addEventListener("input", renderProductos);
 
-    function renderProductos() {
-    const texto = filtroProducto.value.toLowerCase();
+  function renderProductos() {
+    const texto = (filtroProducto.value || "").toLowerCase();
     lista.innerHTML = "";
 
     Object.entries(productosData).forEach(([id, prod]) => {
-        const nombre = prod.nombre?.toLowerCase() || "";
-        const codigo = prod.codigo?.toLowerCase() || "";
-        if (texto && !nombre.includes(texto) && !codigo.includes(texto)) return;
+      const nombre = prod.nombre?.toLowerCase() || "";
+      const codigo = prod.codigo?.toLowerCase() || "";
+      if (texto && !nombre.includes(texto) && !codigo.includes(texto)) return;
 
-        const item = document.createElement("div");
-        item.className = "mdl-list__item mdl-list__item--three-line";
-        item.style.position = "relative";
+      const item = document.createElement("div");
+      item.className = "mdl-list__item mdl-list__item--three-line";
+      item.style.position = "relative";
 
-        item.innerHTML = `
+      item.innerHTML = `
         <span class="mdl-list__item-primary-content">
-            <strong>${prod.codigo}</strong>: ${prod.nombre}<br>
-            <span class="mdl-list__item-sub-title">Stock: ${prod.cantidad} | Q${prod.precio.toFixed(2)}</span>
+          <strong>${prod.codigo}</strong>: ${prod.nombre}<br>
+          <span class="mdl-list__item-sub-title">
+            Stock: ${prod.cantidad} ${prod.presentacion || ""} | Q${Number(prod.precio || 0).toFixed(2)}
+          </span>
         </span>
         <span class="mdl-list__item-secondary-action">
-            <button class="mdl-button mdl-js-button mdl-button--icon menu-btn" data-id="${id}">
+          <button class="mdl-button mdl-js-button mdl-button--icon menu-btn" data-id="${id}">
             <i class="zmdi zmdi-more-vert"></i>
-            </button>
-            <ul class="options-menu" id="menu-${id}" style="
+          </button>
+          <ul class="options-menu" id="menu-${id}" style="
             display: none;
             position: absolute;
             top: 5px;
@@ -147,299 +139,309 @@ await set(ref(db, "productos_naranjo/" + idFinal), producto);
             list-style: none;
             padding: 5px 0;
             z-index: 9999;
-            min-width: 120px;
-            ">
+            min-width: 120px;">
             <li style="padding: 5px 15px;"><a href="#" class="edit-product" data-id="${id}">Editar</a></li>
             <li style="padding: 5px 15px;"><a href="#" class="delete-product" data-id="${id}">Eliminar</a></li>
-            </ul>
+          </ul>
         </span>
-        `;
+      `;
 
-        // Mostrar/ocultar menú contextual
-        const btnMenu = item.querySelector(".menu-btn");
-        const menu = item.querySelector(`#menu-${id}`);
-        btnMenu.addEventListener("click", (e) => {
+      // Mostrar/ocultar menú contextual
+      const btnMenu = item.querySelector(".menu-btn");
+      const menu = item.querySelector(`#menu-${id}`);
+      btnMenu.addEventListener("click", (e) => {
         e.preventDefault();
         document.querySelectorAll(".options-menu").forEach(m => {
-            if (m !== menu) m.style.display = "none";
+          if (m !== menu) m.style.display = "none";
         });
         menu.style.display = menu.style.display === "block" ? "none" : "block";
-        });
+      });
 
-        // Ocultar el menú al hacer clic fuera
-        document.addEventListener("click", (e) => {
+      // Ocultar el menú al hacer clic fuera
+      document.addEventListener("click", (e) => {
         if (!item.contains(e.target)) {
-            menu.style.display = "none";
+          menu.style.display = "none";
         }
-        });
+      });
 
-        // Eliminar producto
-        item.querySelector(".delete-product").addEventListener("click", (e) => {
+      // Eliminar
+      item.querySelector(".delete-product").addEventListener("click", (e) => {
         e.preventDefault();
         Swal.fire({
-            title: "¿Eliminar producto?",
-            text: "Esta acción no se puede deshacer",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonText: "Sí, eliminar",
-            cancelButtonText: "Cancelar"
+          title: "¿Eliminar producto?",
+          text: "Esta acción no se puede deshacer",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonText: "Sí, eliminar",
+          cancelButtonText: "Cancelar"
         }).then((result) => {
-            if (result.isConfirmed) {
+          if (result.isConfirmed) {
             const prod = productosData[id];
             set(ref(db, "productos_naranjo/" + id), null);
             Swal.fire("Eliminado", "Producto eliminado correctamente", "success");
             registrarAccion("eliminó un producto", "inventario", {
-                codigo: prod.codigo,
-                nombre: prod.nombre,
-                cantidad: prod.cantidad,
-                precio: prod.precio
+              codigo: prod.codigo,
+              nombre: prod.nombre,
+              cantidad: prod.cantidad,
+              presentacion: prod.presentacion || "",
+              precio: prod.precio,
+              proveedor: prod.proveedor || ""
             });
-            }
+          }
         });
-        });
+      });
 
-        // Editar producto
-        item.querySelector(".edit-product").addEventListener("click", (e) => {
+      // Editar
+      item.querySelector(".edit-product").addEventListener("click", (e) => {
         e.preventDefault();
         const prod = productosData[id];
         if (!prod) return;
 
-        ["productCode", "productName", "productQty", "productPrice", "productSupplier"].forEach(id => {
-    const input = document.getElementById(id);
-    const valor =
-        id === "productQty" ? prod.cantidad :
-        id === "productPrice" ? prod.precio :
-        prod[id === "productName" ? "nombre" :
-            id === "productSupplier" ? "proveedor" : "codigo"];
-    input.value = valor || "";
-    input.parentElement.classList.add("is-dirty");
-    });
+        // Rellenar formulario
+        document.getElementById("productCode").value = prod.codigo || "";
+        document.getElementById("productName").value = prod.nombre || "";
+        document.getElementById("productQty").value = prod.cantidad || "";
+        document.getElementById("productPresentation").value = prod.presentacion || ""; // ✅ nuevo
+        document.getElementById("productPrice").value = prod.precio || "";
+        document.getElementById("productSupplier").value = prod.proveedor || "";
+
+        ["productCode","productName","productQty","productPresentation","productPrice","productSupplier"]
+          .forEach(idIn => document.getElementById(idIn).parentElement.classList.add("is-dirty"));
 
         modoEdicion = true;
         idProductoEditado = id;
 
         const tabLink = document.querySelector('[href="#tabNewProduct"]');
         if (tabLink) tabLink.click();
-        });
+      });
 
-        lista.appendChild(item);
+      lista.appendChild(item);
     });
-    }
-            
-   document.getElementById("btn-pdf").addEventListener("click", () => {
-  const doc = new window.jspdf.jsPDF();
-  const logoUrl = "assets/img/logo_rg.png";
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.src = logoUrl;
+  }
+          
+  // PDF (incluye Presentación)
+  document.getElementById("btn-pdf").addEventListener("click", () => {
+    const doc = new window.jspdf.jsPDF();
+    const logoUrl = "assets/img/logo_rg.png";
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = logoUrl;
 
-  img.onload = () => {
-    doc.addImage(img, "PNG", 15, 10, 35, 20);
-    const fecha = new Date().toLocaleDateString();
-    doc.setFontSize(16);
-    doc.text("INVENTARIO RG - NARANJO", 50, 20);
-    doc.setFontSize(10);
-    doc.text("Fecha: " + fecha, 50, 27);
+    img.onload = () => {
+      doc.addImage(img, "PNG", 15, 10, 35, 20);
+      const fecha = new Date().toLocaleDateString();
+      doc.setFontSize(16);
+      doc.text("INVENTARIO RG - NARANJO", 50, 20);
+      doc.setFontSize(10);
+      doc.text("Fecha: " + fecha, 50, 27);
 
-    get(ref(db, "productos_naranjo")).then((snapshot) => {
-      const productos = snapshot.val();
-      if (!productos) {
-        Swal.fire("Nada para imprimir", "No hay productos en inventario", "info");
-        return;
-      }
+      get(ref(db, "productos_naranjo")).then((snapshot) => {
+        const productos = snapshot.val();
+        if (!productos) {
+          Swal.fire("Nada para imprimir", "No hay productos en inventario", "info");
+          return;
+        }
 
-      const rows = [];
-      let totalCantidad = 0;
-      let totalPrecio = 0;
+        const rows = [];
+        let totalCantidad = 0;
+        let totalPrecio = 0;
 
-      for (const [id, prod] of Object.entries(productos)) {
+        for (const [id, prod] of Object.entries(productos)) {
+          const cant = Number(prod.cantidad || 0);
+          const prec = Number(prod.precio || 0);
+          rows.push([
+            prod.codigo || id,
+            prod.nombre || "",
+            cant,
+            prod.presentacion || "", // ✅ en PDF
+            "Q" + prec.toFixed(2),
+            prod.proveedor || ""
+          ]);
+
+          totalCantidad += cant;
+          totalPrecio += prec;
+        }
+
+        // Fila de totales
         rows.push([
-          prod.codigo || id,
-          prod.nombre || "",
-          prod.cantidad || 0,
-          "Q" + (prod.precio || 0).toFixed(2),
-          prod.proveedor || ""
+          "",
+          "Totales",
+          totalCantidad,
+          "",
+          "Q" + totalPrecio.toFixed(2),
+          ""
         ]);
 
-        totalCantidad += prod.cantidad || 0;
-        totalPrecio += prod.precio || 0;
-      }
+        doc.autoTable({
+          startY: 35,
+          head: [["Código", "Nombre", "Cantidad", "Presentación", "Precio", "Proveedor"]],
+          body: rows,
+          theme: "striped",
+          headStyles: { fillColor: [221, 175, 39] },
+          styles: { fontSize: 9, cellPadding: 3 },
+          columnStyles: {
+            0: { cellWidth: 22 },                    // Código
+            1: { cellWidth: 50 },                    // Nombre
+            2: { cellWidth: 22, halign: 'right' },   // Cantidad
+            3: { cellWidth: 28 },                    // Presentación
+            4: { cellWidth: 28, halign: 'right' },   // Precio
+            5: { cellWidth: 35 }                     // Proveedor 
+          }
+        });
 
-      // Fila de totales
-      rows.push([
-        "",
-        "Totales",
-        totalCantidad,
-        "Q" + totalPrecio.toFixed(2),
-        ""
-      ]);
-
-      doc.autoTable({
-        startY: 35,
-        head: [["Código", "Nombre", "Cantidad", "Precio", "Proveedor"]],
-        body: rows,
-        theme: "striped",
-        headStyles: { fillColor: [221, 175, 39] },
-        styles: { fontSize: 9, cellPadding: 3 },
-        columnStyles: {
-          0: { cellWidth: 25 },        // Código
-          1: { cellWidth: 55 },        // Nombre
-          2: { cellWidth: 22, halign: 'right' }, // Cantidad
-          3: { cellWidth: 28, halign: 'right' }, // Precio
-          4: { cellWidth: 40 }         // Proveedor 
-        }
+        doc.save("inventario_rg_naranjo.pdf");
       });
+    };
+  });
 
-      doc.save("inventario_rg_naranjo.pdf");
-    });
-  };
-});
-
-
-function logout() {
-  signOut(auth)
-    .then(() => {
-      window.location.href = "opciones.html"; // o la ruta que desees
-    })
-    .catch((error) => {
-      console.error("Error al cerrar sesión:", error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Oops...',
-        text: 'No se pudo cerrar la sesión. Intenta de nuevo.'
+  function logout() {
+    signOut(auth)
+      .then(() => {
+        window.location.href = "opciones.html";
+      })
+      .catch((error) => {
+        console.error("Error al cerrar sesión:", error);
+        Swal.fire({ icon: 'error', title: 'Oops...', text: 'No se pudo cerrar la sesión. Intenta de nuevo.' });
       });
-    });
-}
+  }
+  window.logout = logout; // global
+</script>
+</head>
 
-// ✅ Exponer la función al ámbito global para que funcione con onclick
-window.logout = logout;
-
-    </script>
-    </head>
-    <body>
-        <div class="full-width navBar">
-        <div class="full-width navBar-options">
-        <i class="zmdi zmdi-more-vert btn-menu" id="btn-menu"></i>
-        <div class="mdl-tooltip" for="btn-menu">Menú</div>
-        <nav class="navBar-options-list">
-            <ul class="list-unstyle">
-            <li class="btn-exit">
-  <i class="zmdi zmdi-power"></i>
-  <div class="mdl-tooltip" for="btn-exit">Cerrar sesión</div>
-</li>
-            </ul>
-        </nav>
-        </div>
-    </div>
-    <!-- Aquí podrías insertar tu barra lateral si la tienes como componente -->
-
-    <section class="full-width navLateral">
-        <div class="full-width navLateral-bg btn-menu"></div>
-        <div class="full-width navLateral-body">
-        <div class="full-width navLateral-body-logo text-center tittles">
-            <i class="zmdi zmdi-close btn-menu"></i> Distribuidora RG - NARANJO
-        </div>
-        <figure class="full-width" style="height: 77px;">
-            <div class="navLateral-body-cl">
-    <img src="assets/img/logo_rg.png" ... />  </div>
-            <figcaption class="navLateral-body-cr hide-on-tablet">
-            <span>
-                <br />
-                <small></small>
-            </span>
-            </figcaption>
-        </figure>
-        <div class="full-width tittles navLateral-body-tittle-menu">
-            <i class="zmdi zmdi-desktop-mac"></i><span class="hide-on-tablet"> MENÚ</span>
-        </div>
-        <nav class="full-width">
-            <ul class="full-width list-unstyle menu-principal">
-            <li><a href="home_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-view-dashboard"></i></div><div class="navLateral-body-cr hide-on-tablet">Inicio</div></a></li>
-            <li><a href="inventario_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-store"></i></div><div class="navLateral-body-cr hide-on-tablet">Inventario</div></a></li>
-            <li><a href="cliente_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-accounts"></i></div><div class="navLateral-body-cr hide-on-tablet">Clientes</div></a></li>
-            <li><a href="compras_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-shopping-basket"></i></div><div class="navLateral-body-cr hide-on-tablet">Compras</div></a></li>
-            <li><a href="proveedores_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-truck"></i></div><div class="navLateral-body-cr hide-on-tablet">Proveedores</div></a></li>
-            <li><a href="ventas_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-shopping-cart"></i></div><div class="navLateral-body-cr hide-on-tablet">Ventas</div></a></li>
-            <li><a href="cuentas-cobrar_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-balance-wallet"></i></div><div class="navLateral-body-cr hide-on-tablet">Cuentas por cobrar</div></a></li>
-           <li><a href="generar_xls_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-file"></i></div><div class="navLateral-body-cr hide-on-tablet">Generar XLS</div></a></li>
- 
+<body>
+  <div class="full-width navBar">
+    <div class="full-width navBar-options">
+      <i class="zmdi zmdi-more-vert btn-menu" id="btn-menu"></i>
+      <div class="mdl-tooltip" for="btn-menu">Menú</div>
+      <nav class="navBar-options-list">
+        <ul class="list-unstyle">
+          <li class="btn-exit" onclick="logout()">
+            <i class="zmdi zmdi-power"></i>
+            <div class="mdl-tooltip" for="btn-exit">Cerrar sesión</div>
+          </li>
         </ul>
-        </nav>
+      </nav>
+    </div>
+  </div>
+
+  <section class="full-width navLateral">
+    <div class="full-width navLateral-bg btn-menu"></div>
+    <div class="full-width navLateral-body">
+      <div class="full-width navLateral-body-logo text-center tittles">
+        <i class="zmdi zmdi-close btn-menu"></i> Distribuidora RG - NARANJO
+      </div>
+      <figure class="full-width" style="height: 77px;">
+        <div class="navLateral-body-cl">
+          <img src="assets/img/logo_rg.png" />
         </div>
-    </section>
-    <!-- Contenido -->
-    <section class="full-width pageContent">
-        <div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
-        <div class="mdl-tabs__tab-bar">
-            <a href="#tabNewProduct" class="mdl-tabs__tab is-active">Nuevo producto</a>
-            <a href="#tabListProduct" class="mdl-tabs__tab">Inventario</a>
+        <figcaption class="navLateral-body-cr hide-on-tablet">
+          <span><br /><small></small></span>
+        </figcaption>
+      </figure>
+      <div class="full-width tittles navLateral-body-tittle-menu">
+        <i class="zmdi zmdi-desktop-mac"></i><span class="hide-on-tablet"> MENÚ</span>
+      </div>
+      <nav class="full-width">
+        <ul class="full-width list-unstyle menu-principal">
+          <li><a href="home_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-view-dashboard"></i></div><div class="navLateral-body-cr hide-on-tablet">Inicio</div></a></li>
+          <li><a href="inventario_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-store"></i></div><div class="navLateral-body-cr hide-on-tablet">Inventario</div></a></li>
+          <li><a href="cliente_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-accounts"></i></div><div class="navLateral-body-cr hide-on-tablet">Clientes</div></a></li>
+          <li><a href="compras_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-shopping-basket"></i></div><div class="navLateral-body-cr hide-on-tablet">Compras</div></a></li>
+          <li><a href="proveedores_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-truck"></i></div><div class="navLateral-body-cr hide-on-tablet">Proveedores</div></a></li>
+          <li><a href="ventas_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-shopping-cart"></i></div><div class="navLateral-body-cr hide-on-tablet">Ventas</div></a></li>
+          <li><a href="cuentas-cobrar_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-balance-wallet"></i></div><div class="navLateral-body-cr hide-on-tablet">Cuentas por cobrar</div></a></li>
+          <li><a href="generar_xls_naranjo.html" class="full-width"><div class="navLateral-body-cl"><i class="zmdi zmdi-file"></i></div><div class="navLateral-body-cr hide-on-tablet">Generar XLS</div></a></li>
+        </ul>
+      </nav>
+    </div>
+  </section>
+
+  <!-- Contenido -->
+  <section class="full-width pageContent">
+    <div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
+      <div class="mdl-tabs__tab-bar">
+        <a href="#tabNewProduct" class="mdl-tabs__tab is-active">Nuevo producto</a>
+        <a href="#tabListProduct" class="mdl-tabs__tab">Inventario</a>
+      </div>
+
+      <!-- Formulario -->
+      <div class="mdl-tabs__panel is-active" id="tabNewProduct">
+        <div class="mdl-grid">
+          <div class="mdl-cell mdl-cell--6-col mdl-cell--3-offset-desktop">
+            <div class="full-width panel mdl-shadow--2dp">
+              <div class="full-width panel-tittle bg-primary text-center tittles">Registrar producto</div>
+              <div class="full-width panel-content">
+                <form id="form-product">
+                  <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                    <input class="mdl-textfield__input" type="text" id="productCode" />
+                    <label class="mdl-textfield__label" for="productCode">Código</label>
+                  </div>
+                  <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                    <input class="mdl-textfield__input" type="text" id="productName" />
+                    <label class="mdl-textfield__label" for="productName">Nombre</label>
+                  </div>
+                  <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                    <input class="mdl-textfield__input" type="number" step="0.01" id="productQty" />
+                    <label class="mdl-textfield__label" for="productQty">Cantidad</label>
+                  </div>
+
+                  <!-- ✅ NUEVO: Presentación -->
+                  <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                    <select class="mdl-textfield__input" id="productPresentation" required>
+                      <option value="" disabled selected>Selecciona presentación</option>
+                      <option value="Quintal">Quintal</option>
+                      <option value="@">@</option>
+                      <option value="Caja">Caja</option>
+                      <option value="Lbs">Lbs</option>
+                    </select>
+                    <label class="mdl-textfield__label" for="productPresentation">Presentación</label>
+                  </div>
+
+                  <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                    <input class="mdl-textfield__input" type="number" step="0.01" id="productPrice" />
+                    <label class="mdl-textfield__label" for="productPrice">Precio</label>
+                  </div>
+                  <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                    <input class="mdl-textfield__input" type="text" id="productSupplier" />
+                    <label class="mdl-textfield__label" for="productSupplier">Proveedor</label>
+                  </div>
+                  <p class="text-center">
+                    <button id="btn-addProduct" class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">
+                      Guardar
+                    </button>
+                  </p>
+                </form>
+              </div>
+            </div>
+          </div>
         </div>
-        <!-- Formulario -->
-        <div class="mdl-tabs__panel is-active" id="tabNewProduct">
-            <div class="mdl-grid">
-            <div class="mdl-cell mdl-cell--6-col mdl-cell--3-offset-desktop">
-                <div class="full-width panel mdl-shadow--2dp">
-                <div class="full-width panel-tittle bg-primary text-center tittles">Registrar producto</div>
-                <div class="full-width panel-content">
-                    <form id="form-product">
-                    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                        <input class="mdl-textfield__input" type="text" id="productCode" />
-                        <label class="mdl-textfield__label" for="productCode">Código</label>
-                    </div>
-                    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                        <input class="mdl-textfield__input" type="text" id="productName" />
-                        <label class="mdl-textfield__label" for="productName">Nombre</label>
-                    </div>
-                    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                        <input class="mdl-textfield__input" type="number" step="0.01" id="productQty" />
-                        <label class="mdl-textfield__label" for="productQty">Cantidad</label>
-                    </div>
-                    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                        <input class="mdl-textfield__input" type="number" step="0.01" id="productPrice" />
-                        <label class="mdl-textfield__label" for="productPrice">Precio</label>
-                    </div>
-                    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                        <input class="mdl-textfield__input" type="text" id="productSupplier" />
-                        <label class="mdl-textfield__label" for="productSupplier">Proveedor</label>
-                    </div>
-                    <p class="text-center">
-                        <button id="btn-addProduct" class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">
-                        Guardar
-                        </button>
-                    </p>
-                    </form>
+      </div>
+      
+      <!-- Listado -->
+      <div class="mdl-tabs__panel" id="tabListProduct">
+        <div class="mdl-grid">
+          <div class="mdl-cell mdl-cell--10-col mdl-cell--1-offset-desktop">
+            <div class="full-width panel mdl-shadow--2dp">
+              <div class="full-width panel-tittle bg-success text-center tittles">Inventario actual</div>
+              <div class="full-width panel-content">
+                <div style="margin-bottom: 10px; text-align:right;">
+                  <input type="text" id="filtroProducto" placeholder="Buscar producto..." class="mdl-textfield__input" style="width: 300px; padding: 8px;" />
                 </div>
+                <div class="mdl-list" id="product-list">
+                  <!-- Productos se insertan aquí dinámicamente -->
                 </div>
+              </div>
             </div>
-            </div>
+          </div>
         </div>
-        
-        <!-- Listado -->
-        <div class="mdl-tabs__panel" id="tabListProduct">
-            <div class="mdl-grid">
-            <div class="mdl-cell mdl-cell--10-col mdl-cell--1-offset-desktop">
-                <div class="full-width panel mdl-shadow--2dp">
-                <div class="full-width panel-tittle bg-success text-center tittles">Inventario actual</div>
-                <div class="full-width panel-content">
-                    <div style="margin-bottom: 10px; text-align:right;">
-                    <input type="text" id="filtroProducto" placeholder="Buscar producto..." class="mdl-textfield__input" style="width: 300px; padding: 8px;" />
-                    </div>
-                    <div class="mdl-list" id="product-list">
-                        
-                    <!-- Productos se insertan aquí dinámicamente -->
-                    
-                    </div>
-                </div>
-                </div>
-            </div>
-            </div>
-        </div> <!-- cierra listado -->
-        </div> <!-- cierra tabs -->
-        <p class="text-center">
-        <button id="btn-pdf" class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored">
+      </div> <!-- cierra listado -->
+    </div> <!-- cierra tabs -->
+
+    <p class="text-center">
+      <button id="btn-pdf" class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored">
         <i class="zmdi zmdi-print"></i> Imprimir Inventario
-        </button>
-        </p>
-    </section>
-    </body>
-    </html>
+      </button>
+    </p>
+  </section>
+</body>
+</html>
