@@ -80,12 +80,12 @@
         <a href="#tabListCompras" class="mdl-tabs__tab">Historial de compras</a>
       </div>
 
-      <!-- Registrar compra -->
+      <!-- Registrar compra (con carrito) -->
       <div class="mdl-tabs__panel is-active" id="tabNewCompra">
         <div class="mdl-grid">
-          <div class="mdl-cell mdl-cell--6-col mdl-cell--3-offset-desktop">
+          <div class="mdl-cell mdl-cell--8-col mdl-cell--2-offset-desktop">
             <div class="full-width panel mdl-shadow--2dp">
-              <div class="full-width panel-tittle bg-primary text-center tittles">Registrar nueva compra</div>
+              <div class="full-width panel-tittle bg-primary text-center tittles">Registrar nueva compra (con carrito)</div>
               <div class="full-width panel-content">
                 <form id="form-compra">
                   <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
@@ -116,11 +116,42 @@
                   </div>
 
                   <p class="text-center">
-                    <button id="btn-addCompra" class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored">
-                      Registrar compra
+                    <button id="btn-addCarrito" class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored">
+                      Agregar al carrito
                     </button>
                   </p>
                 </form>
+
+                <!-- Carrito -->
+                <div class="mdl-cell mdl-cell--12-col">
+                  <h5 class="text-center">Carrito de Compras</h5>
+                  <table class="mdl-data-table mdl-js-data-table full-width" id="tablaCarrito">
+                    <thead>
+                      <tr>
+                        <th>Producto</th>
+                        <th class="text-center">Cantidad</th>
+                        <th class="text-center">Precio unitario</th>
+                        <th class="text-center">Subtotal</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                    <tfoot>
+                      <tr>
+                        <td colspan="3"><strong>Total compra</strong></td>
+                        <td id="compraTotal">Q0.00</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                <p class="text-center">
+                  <button id="btn-finalizarCompra" class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored">
+                    Finalizar compra
+                  </button>
+                </p>
+
               </div>
             </div>
           </div>
@@ -135,8 +166,8 @@
               <div class="full-width panel-tittle bg-success text-center tittles">Historial de compras</div>
               <div class="full-width panel-content">
                 <div class="mdl-list" id="compra-list"></div>
-                <div style="text-align:right; margin-bottom:10px;">
-                  <input type="text" id="filtroCompras" placeholder="Buscar por proveedor o producto..." class="mdl-textfield__input" style="width:50%;" />
+                <div style="text-align:right; margin:10px 0;">
+                  <input type="text" id="filtroCompras" placeholder="Buscar por proveedor, factura o producto..." class="mdl-textfield__input" style="width:50%;" />
                 </div>
               </div>
             </div>
@@ -157,7 +188,7 @@
     import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
     import { getDatabase, ref, set, get, update, push, onValue } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
 
-    // Fallback por si registrarAccion no está definido en otro archivo
+    // Fallback por si registrarAccion no está definido
     window.registrarAccion = window.registrarAccion || (async () => {});
 
     const firebaseConfig = {
@@ -174,19 +205,32 @@
     const auth = getAuth(app);
     const db = getDatabase(app);
 
-    let compraEditando = null;
+    // Estado carrito
+    let carrito = []; // {codigo, nombre, cantidad, precio}
+    let productosCache = {}; // codigo -> producto
 
-    // Cargar productos en el select
+    // Refs UI
     const selectProducto = document.getElementById("compraProducto");
+    const qtyInput = document.getElementById("productQty");
+    const precioInput = document.getElementById("compraPrecio");
+    const tablaCarritoBody = document.querySelector("#tablaCarrito tbody");
+    const totalDisplay = document.getElementById("compraTotal");
+    const listaHistorial = document.getElementById("compra-list");
+
+    // Cargar productos y cache
     get(ref(db, "productos_zona2"))
       .then((snapshot) => {
         const productos = snapshot.val();
         if (!productos) return;
 
         Object.values(productos).forEach((prod) => {
+          const codigo = prod.codigo || "";
+          const nombre = prod.nombre || "";
+          productosCache[codigo] = { ...prod, codigo, nombre };
+
           const option = document.createElement("option");
-          option.value = prod.codigo || "";
-          option.textContent = `${prod.codigo || "—"} – ${prod.nombre || ""}`;
+          option.value = codigo;
+          option.textContent = `${codigo || "—"} – ${nombre}`;
           selectProducto.appendChild(option);
         });
       })
@@ -195,133 +239,163 @@
         Swal.fire("Error", "No se pudieron cargar los productos", "error");
       });
 
-    // Registrar / Editar compra
-    document.getElementById("btn-addCompra").addEventListener("click", (e) => {
+    // Agregar al carrito
+    document.getElementById("btn-addCarrito").addEventListener("click", (e) => {
       e.preventDefault();
 
+      const codigo = selectProducto.value;
+      const cantidad = Number((qtyInput.value || "").trim());
+      const precio = Number((precioInput.value || "").trim());
+
+      if (!codigo || !cantidad || cantidad <= 0 || !precio || precio <= 0) {
+        Swal.fire("Campos requeridos", "Selecciona un producto y coloca cantidad y precio válidos", "warning");
+        return;
+      }
+      const prod = productosCache[codigo];
+      if (!prod) {
+        Swal.fire("Producto no encontrado", "Actualiza la página e intenta de nuevo", "error");
+        return;
+      }
+
+      const existente = carrito.find((p) => p.codigo === codigo);
+      if (existente) {
+        existente.cantidad += cantidad;
+        existente.precio = precio; // actualiza al último precio
+      } else {
+        carrito.push({ codigo, nombre: prod.nombre || codigo, cantidad, precio });
+      }
+
+      qtyInput.value = "";
+      precioInput.value = "";
+      selectProducto.selectedIndex = 0;
+      levantarLabels(["productQty", "compraPrecio"]);
+
+      renderizarCarrito();
+    });
+
+    function renderizarCarrito() {
+      tablaCarritoBody.innerHTML = "";
+      let total = 0;
+
+      carrito.forEach((item, i) => {
+        const subtotal = Number(item.cantidad) * Number(item.precio);
+        total += subtotal;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${item.nombre} <small style="opacity:.7">(${item.codigo})</small></td>
+          <td class="text-center">${item.cantidad}</td>
+          <td class="text-center">Q${Number(item.precio).toFixed(2)}</td>
+          <td class="text-center">Q${subtotal.toFixed(2)}</td>
+          <td class="text-center">
+            <button class="mdl-button mdl-js-button mdl-button--icon" title="Quitar" onclick="eliminarDelCarrito(${i})">
+              <i class="zmdi zmdi-close"></i>
+            </button>
+          </td>
+        `;
+        tablaCarritoBody.appendChild(tr);
+      });
+
+      totalDisplay.textContent = "Q" + total.toFixed(2);
+    }
+
+    window.eliminarDelCarrito = function(i) {
+      carrito.splice(i, 1);
+      renderizarCarrito();
+    };
+
+    // Finalizar compra (carrito completo)
+    document.getElementById("btn-finalizarCompra").addEventListener("click", async () => {
       const proveedor = document.getElementById("compraProveedor").value.trim();
-      const codigoProducto = document.getElementById("compraProducto").value;
-      const cantidad = Number((document.getElementById("productQty").value || "").trim());
-      const precioUnitario = Number((document.getElementById("compraPrecio").value || "").trim());
       const factura = document.getElementById("compraFactura").value.trim();
 
-      if (!proveedor || !codigoProducto || !cantidad || !precioUnitario) {
-        Swal.fire("Campos requeridos", "Debes completar todos los campos correctamente", "warning");
+      if (!proveedor) {
+        Swal.fire("Proveedor requerido", "Indica el proveedor de la factura", "warning");
+        return;
+      }
+      if (carrito.length === 0) {
+        Swal.fire("Carrito vacío", "Agrega al menos un producto", "warning");
         return;
       }
 
       const fecha = new Date().toISOString().split("T")[0];
-      const total = (cantidad * precioUnitario).toFixed(2);
+      const total = carrito.reduce((t, p) => t + (Number(p.precio) * Number(p.cantidad)), 0);
 
-      const compra = { proveedor, codigoProducto, cantidad, precioUnitario, total, fecha, factura };
+      const compra = {
+        factura: factura || "-",
+        proveedor,
+        fecha,
+        total: total.toFixed(2),
+        items: carrito.map((p) => ({
+          codigo: p.codigo,
+          nombre: p.nombre,
+          cantidad: Number(p.cantidad),
+          precioUnitario: Number(p.precio)
+        }))
+      };
 
-      if (compraEditando) {
-        // EDICIÓN: ajustar stock previo y nuevo
-        get(ref(db, "compras_zona2/" + compraEditando)).then((snapshot) => {
-          const anterior = snapshot.val();
-          if (!anterior) return;
+      try {
+        // Guardar compra
+        const nuevaRef = await push(ref(db, "compras_zona2"), compra);
 
-          const refProdAnterior = ref(db, "productos_zona2/" + anterior.codigoProducto);
-          const refProdNuevo = ref(db, "productos_zona2/" + compra.codigoProducto);
+        // Actualizar stock
+        await Promise.all(compra.items.map(async (p) => {
+          const prodRef = ref(db, "productos_zona2/" + p.codigo);
+          const snap = await get(prodRef);
+          const actual = snap.val();
+          const nuevoStock = (Number(actual?.cantidad) || 0) + Number(p.cantidad);
+          return update(prodRef, { cantidad: nuevoStock });
+        }));
 
-          // 1) Restar stock anterior
-          get(refProdAnterior)
-            .then((snapAnterior) => {
-              const prodAntes = snapAnterior.val();
-              const nuevoStockAnterior = (Number(prodAntes?.cantidad) || 0) - Number(anterior.cantidad);
-              return update(refProdAnterior, { cantidad: nuevoStockAnterior });
-            })
-            // 2) Sumar stock nuevo
-            .then(() =>
-              get(refProdNuevo).then((snapNuevo) => {
-                const prodNuevo = snapNuevo.val();
-                const nuevoStock = (Number(prodNuevo?.cantidad) || 0) + Number(compra.cantidad);
-                return update(refProdNuevo, { cantidad: nuevoStock });
-              })
-            )
-            // 3) Guardar compra editada
-            .then(() => set(ref(db, "compras_zona2/" + compraEditando), compra))
-            .then(() => {
-              registrarAccion("editó una compra", "compras_zona2", {
-                ...compra,
-                cambioDeProducto: anterior.codigoProducto !== compra.codigoProducto
-              });
-              Swal.fire("Compra actualizada", "Stock ajustado correctamente", "success");
-              document.getElementById("form-compra").reset();
-              selectProducto.selectedIndex = 0;
-              compraEditando = null;
-            })
-            .catch((err) => {
-              console.error(err);
-              Swal.fire("Error", "No se pudo ajustar el stock", "error");
-            });
+        registrarAccion("registró una compra", "compras_zona2", {
+          proveedor: compra.proveedor,
+          factura: compra.factura,
+          total: compra.total,
+          productos: compra.items.map((p) => `${p.nombre} x ${p.cantidad}`),
+          compraId: nuevaRef.key
         });
-      } else {
-        // NUEVA COMPRA
-        push(ref(db, "compras_zona2"), compra)
-          .then(() => {
-            registrarAccion("registró una compra", "compras_zona2", {
-              proveedor,
-              producto: codigoProducto,
-              cantidad,
-              precioUnitario,
-              total
-            });
 
-            const productoRef = ref(db, "productos_zona2/" + codigoProducto);
-            return get(productoRef).then((snap) => {
-              const producto = snap.val();
-              const nuevoStock = (Number(producto?.cantidad) || 0) + Number(cantidad);
-              return update(productoRef, { cantidad: nuevoStock });
-            });
-          })
-          .then(() => {
-            Swal.fire("Compra registrada", `Stock actualizado (+${cantidad})`, "success");
-            document.getElementById("form-compra").reset();
-            selectProducto.selectedIndex = 0;
-          })
-          .catch((err) => {
-            console.error(err);
-            Swal.fire("Error", "No se pudo registrar la compra", "error");
-          });
-
-        compraEditando = null;
+        carrito = [];
+        renderizarCarrito();
+        document.getElementById("form-compra").reset();
+        Swal.fire("Compra registrada", "Stock actualizado correctamente", "success");
+      } catch (err) {
+        console.error(err);
+        Swal.fire("Error", "No se pudo registrar la compra", "error");
       }
     });
 
-    // PDF
-    document.getElementById("btn-pdf-compras").addEventListener("click", () => {
-      const doc = new window.jspdf.jsPDF();
-      doc.setFontSize(16);
-      doc.text("HISTORIAL DE COMPRAS – DISTRIBUIDORA RG ZONA 2", 20, 20);
-      doc.setFontSize(10);
-      doc.text("Fecha: " + new Date().toLocaleDateString(), 20, 28);
+    // Historial en vivo (compatible con items[])
+    onValue(ref(db, "compras_zona2"), (snapshot) => {
+      listaHistorial.innerHTML = "";
+      const data = snapshot.val();
+      if (!data) return;
 
-      get(ref(db, "compras_zona2")).then((snapshot) => {
-        const data = snapshot.val();
-        if (!data) {
-          Swal.fire("Nada para imprimir", "No hay compras registradas", "info");
-          return;
-        }
+      const entradas = Object.entries(data).sort((a, b) => (b[1].fecha || "").localeCompare(a[1].fecha || ""));
 
-        const rows = Object.values(data).map((c) => [
-          c.factura || "-",
-          c.proveedor || "-",
-          c.codigoProducto || "-",
-          c.fecha || "-",
-          Number(c.cantidad || 0),
-          "Q" + Number(c.precioUnitario || 0).toFixed(2),
-          "Q" + (c.total ?? (Number(c.cantidad || 0) * Number(c.precioUnitario || 0)).toFixed(2))
-        ]);
+      entradas.forEach(([id, c]) => {
+        const resumen = Array.isArray(c.items)
+          ? c.items.map(it => `${it.nombre || it.codigo} (${it.cantidad})`).join(", ")
+          : `${c.codigoProducto || "-"} (${c.cantidad || "-"})`;
 
-        doc.autoTable({
-          head: [["Factura", "Proveedor", "Producto", "Fecha", "Cantidad", "Precio", "Total"]],
-          body: rows,
-          startY: 35,
-          theme: "striped"
-        });
-
-        doc.save("compras_distribuidora_rg_zona2.pdf");
+        const item = document.createElement("div");
+        item.className = "mdl-list__item mdl-list__item--three-line";
+        item.innerHTML = `
+          <span class="mdl-list__item-primary-content">
+            <i class="zmdi zmdi-truck mdl-list__item-avatar"></i>
+            <span><strong>${c.proveedor || "-"}</strong> – Factura: ${c.factura || "-"}</span>
+            <span class="mdl-list__item-sub-title">${c.fecha || "-"} | ${resumen} | Total: Q${Number(c.total || 0).toFixed(2)}</span>
+          </span>
+          <span class="mdl-list__item-secondary-action">
+            <button class="mdl-button mdl-js-button mdl-button--icon" title="Imprimir" onclick="imprimirCompra('${id}')">
+              <i class="zmdi zmdi-print"></i>
+            </button>
+            <button class="mdl-button mdl-js-button mdl-button--icon" title="Eliminar" onclick="eliminarCompra('${id}')">
+              <i class="zmdi zmdi-delete"></i>
+            </button>
+          </span>
+        `;
+        listaHistorial.appendChild(item);
       });
     });
 
@@ -333,91 +407,140 @@
       });
     });
 
-    // Historial en vivo
-    const historial = document.getElementById("compra-list");
-    onValue(ref(db, "compras_zona2"), (snapshot) => {
-      historial.innerHTML = "";
-      const data = snapshot.val();
-      if (!data) return;
+    // PDF del historial
+    document.getElementById("btn-pdf-compras").addEventListener("click", async () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text("HISTORIAL DE COMPRAS – DISTRIBUIDORA RG ZONA 2", 20, 20);
+      doc.setFontSize(10);
+      doc.text("Fecha: " + new Date().toLocaleDateString(), 20, 28);
 
-      Object.entries(data).forEach(([id, compra]) => {
-        const item = document.createElement("div");
-        item.className = "mdl-list__item mdl-list__item--three-line";
-        item.innerHTML = `
-          <span class="mdl-list__item-primary-content">
-            <i class="zmdi zmdi-truck mdl-list__item-avatar"></i>
-            <span><strong>${compra.codigoProducto}</strong> – ${compra.proveedor}</span>
-            <span class="mdl-list__item-sub-title">${compra.fecha} | Factura: ${compra.factura || "-"} | Q${compra.total}</span>
-          </span>
-          <span class="mdl-list__item-secondary-action">
-            <button class="mdl-button mdl-js-button mdl-button--icon" onclick="editarCompra('${id}')">
-              <i class="zmdi zmdi-edit"></i>
-            </button>
-            <button class="mdl-button mdl-js-button mdl-button--icon" onclick="eliminarCompra('${id}')">
-              <i class="zmdi zmdi-delete"></i>
-            </button>
-          </span>
-        `;
-        historial.appendChild(item);
+      const snap = await get(ref(db, "compras_zona2"));
+      const data = snap.val();
+      if (!data) {
+        Swal.fire("Nada para imprimir", "No hay compras registradas", "info");
+        return;
+      }
+
+      const rows = Object.values(data).map((c) => {
+        const resumen = Array.isArray(c.items)
+          ? c.items.map(i => `${i.nombre || i.codigo} (${i.cantidad})`).join(", ")
+          : (c.codigoProducto || "-") + " (" + (c.cantidad || "-") + ")";
+        return [c.factura || "-", c.proveedor || "-", c.fecha || "-", resumen, "Q" + Number(c.total || 0).toFixed(2)];
       });
+
+      doc.autoTable({
+        head: [["Factura", "Proveedor", "Fecha", "Productos", "Total"]],
+        body: rows,
+        startY: 35,
+        theme: "striped"
+      });
+
+      doc.save("compras_distribuidora_rg_zona2.pdf");
     });
 
-    // Editar
-    window.editarCompra = function (id) {
-      compraEditando = id;
-      get(ref(db, "compras_zona2/" + id)).then((snapshot) => {
-        const compra = snapshot.val();
-        if (!compra) return;
+    // Imprimir una compra
+    window.imprimirCompra = async function(id) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
 
-        document.getElementById("compraProveedor").value = compra.proveedor || "";
-        document.getElementById("productQty").value = compra.cantidad || "";
-        document.getElementById("compraPrecio").value = compra.precioUnitario || "";
-        document.getElementById("compraFactura").value = compra.factura || "";
+      const s = await get(ref(db, "compras_zona2/" + id));
+      const c = s.val();
+      if (!c) return;
 
-        const select = document.getElementById("compraProducto");
-        select.value = compra.codigoProducto || "";
-        const contenedor = select.closest(".mdl-textfield");
-        if (contenedor) contenedor.classList.add("is-dirty");
+      doc.setFontSize(16);
+      doc.text("NOTA DE COMPRA – DISTRIBUIDORA RG ZONA 2", 20, 20);
+      doc.setFontSize(10);
+      doc.text(`Proveedor: ${c.proveedor || "-"}`, 20, 28);
+      doc.text(`Factura: ${c.factura || "-"}`, 20, 33);
+      doc.text(`Fecha: ${c.fecha || "-"}`, 20, 38);
 
-        // Activar pestaña y “levantar” labels
-        document.querySelector('[href="#tabNewCompra"]').click();
-        ["compraProveedor", "productQty", "compraPrecio", "compraFactura"].forEach((idEl) => {
-          const input = document.getElementById(idEl);
-          const wrapper = input?.closest(".mdl-textfield");
-          if (wrapper) wrapper.classList.add("is-dirty");
-        });
+      const items = Array.isArray(c.items) ? c.items : [{
+        codigo: c.codigoProducto || "-",
+        nombre: c.codigoProducto || "-",
+        cantidad: Number(c.cantidad || 0),
+        precioUnitario: Number(c.precioUnitario || 0)
+      }];
+
+      const body = items.map(i => [
+        i.codigo || "-",
+        i.nombre || "-",
+        i.cantidad,
+        "Q" + Number(i.precioUnitario || 0).toFixed(2),
+        "Q" + (Number(i.cantidad || 0) * Number(i.precioUnitario || 0)).toFixed(2)
+      ]);
+
+      doc.autoTable({
+        head: [["Código", "Producto", "Cantidad", "Precio U.", "Subtotal"]],
+        body,
+        startY: 45,
+        theme: "grid"
       });
+
+      const y = doc.lastAutoTable.finalY + 8;
+      doc.setFontSize(12);
+      doc.text("Total: Q" + Number(c.total || 0).toFixed(2), 20, y);
+
+      doc.save(`compra_${c.factura || id}.pdf`);
     };
 
-    // Eliminar (sin revertir stock; si quieres lo activo)
-    window.eliminarCompra = function (id) {
+    // Eliminar compra (revierte stock)
+    window.eliminarCompra = function(id) {
       Swal.fire({
         title: "¿Eliminar compra?",
+        text: "Se revertirá el stock de sus productos.",
         icon: "warning",
         showCancelButton: true,
         confirmButtonText: "Sí, eliminar"
-      }).then((result) => {
-        if (!result.isConfirmed) return;
+      }).then(async (r) => {
+        if (!r.isConfirmed) return;
 
-        get(ref(db, "compras_zona2/" + id)).then((snapshot) => {
-          const compra = snapshot.val();
-          if (!compra) return;
+        const s = await get(ref(db, "compras_zona2/" + id));
+        const c = s.val();
+        if (!c) return;
 
-          set(ref(db, "compras_zona2/" + id), null).then(() => {
-            registrarAccion("eliminó una compra", "compras_zona2", {
-              proveedor: compra.proveedor,
-              producto: compra.codigoProducto,
-              cantidad: compra.cantidad,
-              precioUnitario: compra.precioUnitario,
-              total: compra.total,
-              factura: compra.factura || "-",
-              fecha: compra.fecha
-            });
-            Swal.fire("Eliminado", "Compra eliminada correctamente", "success");
+        const items = Array.isArray(c.items) ? c.items : [{
+          codigo: c.codigoProducto,
+          cantidad: Number(c.cantidad || 0)
+        }];
+
+        try {
+          await Promise.all(items.map(async (it) => {
+            if (!it || !it.codigo) return;
+            const prodRef = ref(db, "productos_zona2/" + it.codigo);
+            const snap = await get(prodRef);
+            const actual = snap.val();
+            const nuevoStock = Math.max(0, (Number(actual?.cantidad) || 0) - Number(it.cantidad || 0));
+            return update(prodRef, { cantidad: nuevoStock });
+          }));
+
+          await set(ref(db, "compras_zona2/" + id), null);
+
+          registrarAccion("eliminó una compra", "compras_zona2", {
+            proveedor: c.proveedor,
+            factura: c.factura || "-",
+            total: c.total,
+            productos: (c.items || []).map(p => `${p.nombre || p.codigo} (${p.cantidad})`),
+            fecha: c.fecha
           });
-        });
+
+          Swal.fire("Eliminado", "Compra eliminada y stock revertido", "success");
+        } catch (err) {
+          console.error(err);
+          Swal.fire("Error", "No se pudo eliminar o revertir el stock", "error");
+        }
       });
     };
+
+    // Helpers
+    function levantarLabels(ids) {
+      ids.forEach((id) => {
+        const el = document.getElementById(id);
+        const wrap = el ? el.closest(".mdl-textfield") : null;
+        if (wrap) wrap.classList.add("is-dirty");
+      });
+    }
 
     // Logout
     function logout() {
